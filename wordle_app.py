@@ -137,6 +137,7 @@ if not game_over:
     guess = st.text_input("Enter your guess", key=f"guess_{st.session_state.input_key}")
 
     if st.button("Submit Guess"):
+        guess = guess.strip().lower()
         if len(guess) != 5:
             st.warning("Guess must be 5 letters")
         elif not game.is_valid_guess(guess):
