@@ -219,11 +219,13 @@ if st.session_state.show_bot_solution:
 
     if st.session_state.game_history:
         st.subheader("📊 Your Game Analysis")
-        with st.spinner("Analyzing your guesses..."):
-            buf = io.StringIO()
-            with contextlib.redirect_stdout(buf):
-                analyze_game(st.session_state.game_history, all_guesses, first_turn_scores)
-        st.code(buf.getvalue(), language=None)
+        if "analysis_output" not in st.session_state:
+            with st.spinner("Analyzing your guesses..."):
+                buf = io.StringIO()
+                with contextlib.redirect_stdout(buf):
+                    analyze_game(st.session_state.game_history, all_guesses, first_turn_scores)
+                st.session_state.analysis_output = buf.getvalue()
+        st.code(st.session_state.analysis_output, language=None)
 
     if st.button("🔁 Play Again"):
         st.session_state.clear()

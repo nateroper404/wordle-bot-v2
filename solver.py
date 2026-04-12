@@ -78,26 +78,20 @@ def auto_solve(solution, all_guesses, solution_words, first_turn_scores=None, ve
 
     remaining_words = solution_words.copy()
     guesses = []
-    is_first = True
 
     # --- First guess is fixed ---
     guess = "raise"
+    if first_turn_scores is not None:
+        estimated = first_turn_scores.loc[
+            first_turn_scores["guess"] == guess, "expected_words"
+        ].values[0]
+    else:
+        estimated = None
 
     while True:
 
-        # Get estimated remaining before filtering
-        if is_first and first_turn_scores is not None:
-            estimated = first_turn_scores.loc[
-                first_turn_scores["guess"] == guess, "expected_words"
-            ].values[0]
-        elif not is_first:
-            estimated = scores.loc[scores["guess"] == guess, "expected_words"].values[0]
-        else:
-            estimated = None
-
         pattern = evaluate_pattern(solution, guess)
 
-        # Filter remaining words
         remaining_words = [
             w for w in remaining_words
             if evaluate_pattern(w, guess) == pattern
@@ -108,13 +102,9 @@ def auto_solve(solution, all_guesses, solution_words, first_turn_scores=None, ve
         if verbose:
             print(f"{guess.upper()} -> {pattern} | Remaining: {len(remaining_words)}")
 
-        # Check solved
         if guess == solution:
             break
 
-        is_first = False
-
-        # Choose next guess using solver
         if len(remaining_words) <= 3:
             candidate_guesses = remaining_words
         else:
@@ -123,6 +113,7 @@ def auto_solve(solution, all_guesses, solution_words, first_turn_scores=None, ve
         scores = find_best_guess(candidate_guesses, remaining_words)
 
         guess = scores.iloc[0]["guess"]
+        estimated = scores.loc[scores["guess"] == guess, "expected_words"].values[0]
 
     return guesses
 
