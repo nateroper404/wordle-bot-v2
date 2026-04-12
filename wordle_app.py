@@ -33,15 +33,6 @@ first_turn_scores = load_first_turn_scores()
 solution_words_set = set(solution_words)
 
 
-@st.cache_data
-def cached_auto_solve(solution):
-    return auto_solve(
-        solution,
-        all_guesses,
-        solution_words,
-        first_turn_scores=first_turn_scores,
-        verbose=False
-    )
 
 
 def init_game(solution):
@@ -202,8 +193,16 @@ if st.session_state.show_bot_solution:
     st.divider()
     st.subheader("🤖 Bot Solution")
 
-    with st.spinner("Solving..."):
-        bot_guesses = cached_auto_solve(st.session_state.solution)
+    if "bot_guesses" not in st.session_state:
+        with st.spinner("Solving..."):
+            st.session_state.bot_guesses = auto_solve(
+                st.session_state.solution,
+                all_guesses,
+                solution_words,
+                first_turn_scores=first_turn_scores,
+                verbose=False
+            )
+    bot_guesses = st.session_state.bot_guesses
 
     bot_board_html = "".join(game.format_guess_html(g, p) for g, p, *_ in bot_guesses)
     bot_board_html += empty_row * (game.max_attempts - len(bot_guesses))
