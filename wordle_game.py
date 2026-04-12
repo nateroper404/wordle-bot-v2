@@ -152,13 +152,13 @@ class WordleGame:
                 </div>
                 """
             rows_html += f"""
-            <div style="display:flex;flex-direction:row;gap:4px;margin-bottom:6px;">
+            <div style="display:flex;flex-direction:row;justify-content:center;gap:4px;margin-bottom:6px;">
                 {tiles}
             </div>
             """
 
         return f"""
-        <div style="margin-top:12px;">
+        <div style="margin-top:12px;width:100%;max-width:340px;margin-left:auto;margin-right:auto;">
             {rows_html}
         </div>
         """

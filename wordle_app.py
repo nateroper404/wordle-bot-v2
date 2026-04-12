@@ -40,15 +40,16 @@ def init_game(solution):
     st.session_state.input_key = 0
     st.session_state.game_history = []
     st.session_state.show_bot_solution = False
+    st.session_state.setdefault("show_keyboard", True)
 
 
 # --- Mode selection screen ---
-st.title("Wordle Bot")
+st.markdown("<h2 style='text-align:center;margin-bottom:0;'>Wordle+</h2>", unsafe_allow_html=True)
 
 if "game" not in st.session_state:
     if st.session_state.get("setup_mode") == "choose":
         st.subheader("Enter a word to solve")
-        word_input = st.text_input("Word (5 letters)", key="word_choice_input").strip().lower()
+        word_input = st.text_input("Word (5 letters)", key="word_choice_input", autocomplete="off").strip().lower()
 
         if st.button("Start Game"):
             if len(word_input) != 5:
@@ -112,8 +113,6 @@ def loss_dialog():
 
 
 # --- Board ---
-st.subheader("Board")
-
 empty_row = """
 <div style="display:flex;flex-direction:row;gap:4px;margin-bottom:4px;">
     <span style="display:inline-block;width:45px;height:45px;border:2px solid #3a3a3c;"></span>
@@ -126,15 +125,32 @@ empty_row = """
 
 board_html = "".join(game.format_guess_html(g, p) for g, p in game.guesses)
 board_html += empty_row * game.attempts_remaining()
-st.html(f'<div style="display:flex;flex-direction:column;gap:0;">{board_html}</div>')
+st.html(f'<div style="display:flex;flex-direction:column;gap:0;width:fit-content;margin:0 auto;">{board_html}</div>')
 
-st.html(game.format_keyboard_html())
+kb_label = "Hide Keyboard" if st.session_state.get("show_keyboard", True) else "Show Keyboard"
+with st.container(key="kb_toggle_container"):
+    st.markdown("""
+    <style>
+    div[data-testid="kb_toggle_container"] button {
+        padding-top: 2px;
+        padding-bottom: 2px;
+        font-size: 12px;
+        line-height: 1;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    if st.button(kb_label, key="kb_toggle"):
+        st.session_state.show_keyboard = not st.session_state.get("show_keyboard", True)
+        st.rerun()
+
+if st.session_state.get("show_keyboard", True):
+    st.html(game.format_keyboard_html())
 
 # --- Input (only while game is active) ---
 game_over = game.is_solved() or game.attempts_remaining() == 0
 
 if not game_over:
-    guess = st.text_input("Enter your guess", key=f"guess_{st.session_state.input_key}")
+    guess = st.text_input("Enter your guess", key=f"guess_{st.session_state.input_key}", autocomplete="off")
 
     if st.button("Submit Guess"):
         guess = guess.strip().lower()
@@ -143,11 +159,12 @@ if not game_over:
         elif not game.is_valid_guess(guess):
             st.warning("Not in word list")
         else:
+            pattern = game.make_guess(guess)
             st.session_state.game_history.append({
                 "guess": guess,
+                "pattern": pattern,
                 "remaining_words_before": st.session_state.remaining_words.copy()
             })
-            pattern = game.make_guess(guess)
             st.session_state.remaining_words = [
                 w for w in st.session_state.remaining_words
                 if evaluate_pattern(w, guess) == pattern
@@ -179,14 +196,22 @@ if st.session_state.show_bot_solution:
             st.session_state.solution,
             all_guesses,
             solution_words,
+            first_turn_scores=first_turn_scores,
             verbose=False
         )
 
-    bot_board_html = "".join(game.format_guess_html(g, p) for g, p in bot_guesses)
+    bot_board_html = "".join(game.format_guess_html(g, p) for g, p, *_ in bot_guesses)
     bot_board_html += empty_row * (game.max_attempts - len(bot_guesses))
     st.html(f'<div style="display:flex;flex-direction:column;gap:0;">{bot_board_html}</div>')
 
     st.write(f"Bot solved in **{len(bot_guesses)}** guesses.")
+
+    bot_df = pd.DataFrame(
+        [(g.upper(), round(est, 1) if est is not None else "—", act)
+         for g, p, est, act in bot_guesses],
+        columns=["Guess", "Estimated Remaining", "Actual Remaining"]
+    )
+    st.dataframe(bot_df, hide_index=True, use_container_width=False)
 
     if st.session_state.game_history:
         st.subheader("📊 Your Game Analysis")

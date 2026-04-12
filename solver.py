@@ -74,24 +74,36 @@ from utils import evaluate_pattern
 from solver import find_best_guess
 
 
-def auto_solve(solution, all_guesses, solution_words, verbose=True):
+def auto_solve(solution, all_guesses, solution_words, first_turn_scores=None, verbose=True):
 
     remaining_words = solution_words.copy()
     guesses = []
+    is_first = True
 
     # --- First guess is fixed ---
     guess = "raise"
 
     while True:
 
+        # Get estimated remaining before filtering
+        if is_first and first_turn_scores is not None:
+            estimated = first_turn_scores.loc[
+                first_turn_scores["guess"] == guess, "expected_words"
+            ].values[0]
+        elif not is_first:
+            estimated = scores.loc[scores["guess"] == guess, "expected_words"].values[0]
+        else:
+            estimated = None
+
         pattern = evaluate_pattern(solution, guess)
-        guesses.append((guess, pattern))
 
         # Filter remaining words
         remaining_words = [
             w for w in remaining_words
             if evaluate_pattern(w, guess) == pattern
         ]
+
+        guesses.append((guess, pattern, estimated, len(remaining_words)))
 
         if verbose:
             print(f"{guess.upper()} -> {pattern} | Remaining: {len(remaining_words)}")
@@ -100,8 +112,9 @@ def auto_solve(solution, all_guesses, solution_words, verbose=True):
         if guess == solution:
             break
 
+        is_first = False
+
         # Choose next guess using solver
-        # Optional: restrict when small
         if len(remaining_words) <= 3:
             candidate_guesses = remaining_words
         else:
@@ -142,8 +155,14 @@ def analyze_game(history, all_guesses, first_turn_scores):
             scores["guess"] == guess, "expected_words"
         ].values[0]
 
+        actual_remaining = len([
+            w for w in remaining_words
+            if evaluate_pattern(w, guess) == step["pattern"]
+        ])
+
         print(f"Rank: {rank} / {len(scores)}")
         print(f"Estimated remaining: {round(user_expected, 2)}")
+        print(f"Actual remaining:    {actual_remaining}")
 
         # Top 5
 
